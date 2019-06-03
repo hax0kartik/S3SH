@@ -1,0 +1,21 @@
+#pragma once
+#include <functional>
+#include <3ds.h>
+#include <citro2d.h>
+
+typedef struct 
+{
+    std::function<void()> top_func;
+    std::function<void()> bot_func;
+    C2D_TextBuf bot_text_buf;
+    C2D_TextBuf top_text_buf;
+    C2D_Font top_font;
+    C2D_Font bottom_font;
+    bool debug;
+    C3D_RenderTarget *top;
+    C3D_RenderTarget *bottom;
+}uiFuncs_s;
+
+void uiThread(void *arg);
+
+extern uiFuncs_s ui;

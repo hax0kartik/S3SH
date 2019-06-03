@@ -1,0 +1,7 @@
+--atlas -f rgba8888 -z auto
+red.png
+blue.png
+green.png
+yellow.png
+kbd_layout.png
+kbd_press.png
