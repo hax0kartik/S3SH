@@ -42,16 +42,16 @@ int ssh()
 	
 	utils.print("Enter Username:");
 	username = kbd.get_input();
-	utils.print("Username: " + username + "\n");
+	utils.print("\nUsername: " + username + "\n");
 	
 	utils.print("Enter Password:");
 	password = kbd.get_input();
-	utils.print("Password: " + password);
+	utils.print("\nPassword: " + password);
 
 	utils.print("Enter port or leave blank to connect to port 22:");
 	port = kbd.get_input();
 	if(port == "")	port = "22";
-	utils.print("Port: " + port);
+	utils.print("\nPort: " + port);
 	
     u32 *SOC_buffer = (u32*)memalign(0x1000, 0x100000);
 
@@ -169,7 +169,6 @@ int ssh()
 		tv.tv_sec = 2;
 		tv.tv_usec = 30;	
 		int retval = select(sock + 1, &rfds, NULL, NULL, &tv);
-		printf("retval %d\n", retval);
 		if(kbd.has_data() == false)
 		{
 			if(retval == 1)
