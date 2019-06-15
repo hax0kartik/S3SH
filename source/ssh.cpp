@@ -18,12 +18,10 @@
 int ssh()
 {
     std::string hostname = "";
-    std::string username = "";
-    std::string password = "";
-	std::string port = "";
-	int rc;
-	int sock;
-	int written;
+    std::string username = "username";
+    std::string password = "password";
+	std::string port = "22";
+	int rc, sock, written, auth_pw = 0;
 	struct addrinfo hints, *res = nullptr;
 	LIBSSH2_SESSION *session;
 	LIBSSH2_CHANNEL *channel;
@@ -40,18 +38,15 @@ int ssh()
 	hostname = kbd.get_input();
 	utils.print("\n");
 	
-	utils.print("Enter Username:");
+	utils.print("Enter Username or leave blank for default:");
 	username = kbd.get_input();
+	if(username == "") username = "username";
 	utils.print("\nUsername: " + username + "\n");
 	
-	utils.print("Enter Password:");
-	password = kbd.get_input();
-	utils.print("\nPassword: " + password);
-
 	utils.print("Enter port or leave blank to connect to port 22:");
 	port = kbd.get_input();
 	if(port == "")	port = "22";
-	utils.print("\nPort: " + port);
+	utils.print("\nPort: " + port + "\n");
 	
     u32 *SOC_buffer = (u32*)memalign(0x1000, 0x100000);
 
@@ -118,14 +113,58 @@ int ssh()
 		return -1;
 		//return (EXIT_FAILURE);
 	}
+
 	utils.print("Handshaked\n");
-	rc = libssh2_userauth_password(session, username.c_str(), password.c_str());
-	if (rc) {
-		utils.print("Authentication by password failed");
-		return -1;
-		//return (EXIT_FAILURE);
-	} else {
-		utils.print("Authentication by password succeeded");
+
+	std::string userauthlist = "";
+	char *userauth = libssh2_userauth_list(session, username.c_str(), username.length());
+	if(userauth != NULL)
+		userauthlist = std::string(userauth);
+
+    if (userauthlist.find("password") != std::string::npos)
+        auth_pw |= 1;
+
+	// We do not support keybaord-interactive authentication right now
+    //if (strstr(userauthlist, "keyboard-interactive") != NULL)
+       // auth_pw |= 2;
+
+    if (userauthlist.find("publickey") != std::string::npos)
+        auth_pw |= 4;
+
+	if(auth_pw & 1)
+	{
+		utils.print("Enter Password:");
+		password = kbd.get_input();
+		utils.print("\nPassword: " + password + "\n");
+
+		rc = libssh2_userauth_password(session, username.c_str(), password.c_str());
+		if (rc) 
+		{
+			utils.print("Authentication by password failed");
+			return -1;
+			//return (EXIT_FAILURE);
+		} 
+		else 
+		{
+			utils.print("Authentication by password succeeded");
+		}
+	}
+
+	else if (auth_pw & 4)
+	{
+		utils.print("Enter Passphare for the private key(Leave blank if none):");
+		password = kbd.get_input();
+		utils.print("\nPassphrase: " + password + "\n");
+
+        if (libssh2_userauth_publickey_fromfile(session, username.c_str(), "/3ds/ssh/hostkey.pub", "/3ds/ssh/hostkey", password.c_str())) 
+		{
+            utils.print("Authentication by public key failed!\n");
+			return -1;
+        } 
+		else 
+		{
+            utils.print("Authentication by public key succeeded.\n");
+        }
 	}
 
 	channel = libssh2_channel_open_session(session);
