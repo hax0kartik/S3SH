@@ -17,9 +17,9 @@
 
 int ssh()
 {
-    std::string hostname = "";
-    std::string username = "username";
-    std::string password = "password";
+	std::string hostname = "";
+	std::string username = "username";
+	std::string password = "password";
 	std::string port = "22";
 	int rc, sock, written, auth_pw = 0;
 	struct addrinfo hints, *res = nullptr;
@@ -48,7 +48,7 @@ int ssh()
 	if(port == "")	port = "22";
 	utils.print("\nPort: " + port + "\n");
 	
-    u32 *SOC_buffer = (u32*)memalign(0x1000, 0x100000);
+	u32 *SOC_buffer = (u32*)memalign(0x1000, 0x100000);
 
 	if(SOC_buffer == NULL) {
 		utils.print("memalign: failed to allocate\n");
@@ -56,10 +56,10 @@ int ssh()
 	}
 
 	// Now intialise soc:u service
-    Result ret = 0;
+	Result ret = 0;
 	if ((ret = socInit(SOC_buffer, 0x100000)) != 0) {
-    	utils.print("socInit:" + std::to_string(ret));
-        return -1;
+		utils.print("socInit:" + std::to_string(ret));
+		return -1;
 	}
 	rc = libssh2_init(0);
 	if (rc) {
@@ -121,15 +121,15 @@ int ssh()
 	if(userauth != NULL)
 		userauthlist = std::string(userauth);
 
-    if (userauthlist.find("password") != std::string::npos)
-        auth_pw |= 1;
+	if (userauthlist.find("password") != std::string::npos)
+		auth_pw |= 1;
 
 	// We do not support keybaord-interactive authentication right now
-    //if (strstr(userauthlist, "keyboard-interactive") != NULL)
-       // auth_pw |= 2;
+	//if (strstr(userauthlist, "keyboard-interactive") != NULL)
+	// auth_pw |= 2;
 
-    if (userauthlist.find("publickey") != std::string::npos)
-        auth_pw |= 4;
+	if (userauthlist.find("publickey") != std::string::npos)
+		auth_pw |= 4;
 
 	if(auth_pw & 1)
 	{
@@ -156,15 +156,15 @@ int ssh()
 		password = kbd.get_input();
 		utils.print("\nPassphrase: " + password + "\n");
 
-        if (libssh2_userauth_publickey_fromfile(session, username.c_str(), "/3ds/ssh/hostkey.pub", "/3ds/ssh/hostkey", password.c_str())) 
+		if (libssh2_userauth_publickey_fromfile(session, username.c_str(), "/3ds/ssh/hostkey.pub", "/3ds/ssh/hostkey", password.c_str())) 
 		{
-            utils.print("Authentication by public key failed!\n");
+			utils.print("Authentication by public key failed!\n");
 			return -1;
-        } 
+		} 
 		else 
 		{
-            utils.print("Authentication by public key succeeded.\n");
-        }
+			utils.print("Authentication by public key succeeded.\n");
+		}
 	}
 
 	channel = libssh2_channel_open_session(session);
@@ -217,7 +217,7 @@ int ssh()
 					rc = libssh2_channel_read(channel, inputbuf, 1920);
 					buf.append(inputbuf);
 					memset(inputbuf, 0, 1920);
-               	// printf("RC: ", rc);
+					// printf("RC: ", rc);
 				} while (LIBSSH2_ERROR_EAGAIN != rc && rc > 0);
 		
 				if (rc < 0 && LIBSSH2_ERROR_EAGAIN != rc) 
@@ -258,5 +258,5 @@ int ssh()
 			}
 		}
 	} while (aptMainLoop());
-    return 0;
+	return 0;
 }
