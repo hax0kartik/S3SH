@@ -14,6 +14,7 @@ typedef struct
     bool debug;
     C3D_RenderTarget *top;
     C3D_RenderTarget *bottom;
+    Handle event;
 }uiFuncs_s;
 
 void uiThread(void *arg);

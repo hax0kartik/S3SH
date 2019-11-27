@@ -1,43 +1,43 @@
-#include <libssh2.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <poll.h>
-#include <fcntl.h>
-#include <malloc.h>
-#include <algorithm>
-#include <3ds.h>
-#include "util.hpp"
-#include "daisywheel.hpp"
-#include "keyboard.hpp"
-#include "ui.hpp"
-
+#include "ssh.hpp"
 #define EXIT_COMMAND	"exit"
 
-int ssh()
+int ssh::init()
 {
-	std::string hostname = "";
-	std::string username = "username";
-	std::string password = "password";
-	std::string port = "22";
-	int rc, sock, written, auth_pw = 0;
-	struct addrinfo hints, *res = nullptr;
-	LIBSSH2_SESSION *session;
-	LIBSSH2_CHANNEL *channel;
-	std::string commandbuf;
-	char inputbuf[1920];
-	util utils;
-	
 	utils.set_print_func(ui.top_func);
 	utils.print("Console test\n");
+
+	u32 *SOC_buffer = (u32*)memalign(0x1000, 0x100000);
+	if(SOC_buffer == NULL) 
+	{
+		utils.print("memalign: failed to allocate\n");
+		return -1;
+	}
+	// Now intialise soc:u service
+	Result ret = 0;
+	if ((ret = socInit(SOC_buffer, 0x100000)) != 0) 
+	{
+		utils.print("socInit:" + std::to_string(ret));
+		return -1;
+	}
+
+	rc = libssh2_init(0);
+	if (rc) 
+	{
+		utils.print("Error: libssh_init()\n");
+		return -1;
+		//return (EXIT_FAILURE);
+	}
+}
+
+int ssh::mainLoop()
+{
 	auto input_cb = std::bind(utils.put_char, utils.lock, utils.vt, std::placeholders::_1);
-	keyboard kbd(ui.bot_func, input_cb);
+	keyboard kbd (ui.bot_func, input_cb, false);
 
 	utils.print("Enter Host Name/Addr:");
 	hostname = kbd.get_input();
 	utils.print("\n");
-	
+
 	utils.print("Enter Username or leave blank for default:");
 	username = kbd.get_input();
 	if(username == "") username = "username";
@@ -48,26 +48,6 @@ int ssh()
 	if(port == "")	port = "22";
 	utils.print("\nPort: " + port + "\n");
 	
-	u32 *SOC_buffer = (u32*)memalign(0x1000, 0x100000);
-
-	if(SOC_buffer == NULL) {
-		utils.print("memalign: failed to allocate\n");
-		return -1;
-	}
-
-	// Now intialise soc:u service
-	Result ret = 0;
-	if ((ret = socInit(SOC_buffer, 0x100000)) != 0) {
-		utils.print("socInit:" + std::to_string(ret));
-		return -1;
-	}
-	rc = libssh2_init(0);
-	if (rc) {
-		utils.print("Error: libssh_init()\n");
-		return -1;
-		//return (EXIT_FAILURE);
-	}
-
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_ADDRCONFIG;
@@ -192,14 +172,15 @@ int ssh()
 	/* Main loop starts here.
 	 * In it you will be requested to input a command
 	 * command will be executed at remote side
-	 * an you will get output from it //*/
+	 * an you will get output from it /*/
 	 
-	utils.print("Executed till main loop\n");
 	std::string buf;
 	libssh2_channel_flush(channel);
 	fd_set rfds, wfds;
 	struct timeval tv;
 
+	utils.print("Executed till main loop\n");
+	kbd.disable_local_echo();
 	do 
 	{	
 		FD_ZERO(&rfds);
@@ -208,11 +189,9 @@ int ssh()
 		tv.tv_sec = 2;
 		tv.tv_usec = 30;	
 		int retval = select(sock + 1, &rfds, NULL, NULL, &tv);
-		if(kbd.has_data() == false)
+		if(retval == 1 && !kbd.has_data())
 		{
-			if(retval == 1)
-			{
-				do 
+			do 
 				{
 					rc = libssh2_channel_read(channel, inputbuf, 1920);
 					buf.append(inputbuf);
@@ -230,16 +209,16 @@ int ssh()
 					utils.print(buf);
 					buf.clear();
 				}
-			}
 		}
 		
 		else
 		{
 		//	utils.print("Output\n");
-			commandbuf = kbd.get_input();
+			commandbuf = kbd.get_input_async(); // Get every character stroke
+			
 			if (commandbuf == EXIT_COMMAND)
 				break;
-			commandbuf += '\n';
+			
 			written = 0;
 			do
 			{
@@ -247,8 +226,8 @@ int ssh()
 				written += rc;
 			} while (LIBSSH2_ERROR_EAGAIN != rc && rc > 0 && written != commandbuf.length());
 
-			for(int i = 0; i < commandbuf.size(); i++)
-				input_cb('\b');
+			//for(int i = 0; i < commandbuf.size(); i++)
+			//	input_cb('\b');
 			commandbuf.clear();
 			if (rc < 0 && LIBSSH2_ERROR_EAGAIN != rc) 
 			{
@@ -258,5 +237,9 @@ int ssh()
 			}
 		}
 	} while (aptMainLoop());
+}
+
+int ssh::deinit()
+{
 	return 0;
 }

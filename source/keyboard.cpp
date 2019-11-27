@@ -24,7 +24,7 @@ void keyboard::print(C2D_Image layout, C2D_Image keypress, LightLock *lock, std:
 int keyboard::append_to_input(keyboard *keyb, int index)
 {
     key_s key = keyb->keys[index];
-    std::string character = key.normal;
+    std::string character = keyb->do_capslock ? key.special : key.normal;
 
     if(character == "Bsp")
     {
@@ -38,8 +38,14 @@ int keyboard::append_to_input(keyboard *keyb, int index)
     {
         keyb->callback('\t');
     }
+
     else if(character == "Entr")
+    {   
+        
+        if(!keyb->echo)
+            keyb->input.append("\n");
         return 1;
+    }
 
     else if(character == "Space")
     {
@@ -51,7 +57,10 @@ int keyboard::append_to_input(keyboard *keyb, int index)
     
     else
     {
-        keyb->callback(character[0]);
+        
+        if(keyb->echo)
+            keyb->callback(character[0]);
+        
         keyb->input.append(character);
     }
     return 0;  
@@ -169,7 +178,13 @@ std::string keyboard::get_input()
     return std::move(input);
 }
 
-keyboard::keyboard(std::function<void()> &func, std::function<void( char )> cb)
+std::string keyboard::get_input_async()
+{
+    done = false;
+    return std::move(input);
+}
+
+keyboard::keyboard(std::function<void()> &func, std::function<void( char )> cb, bool de)
 {
     LightLock_Init(&lock);
     C2D_SpriteSheet spriteSheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
@@ -177,10 +192,9 @@ keyboard::keyboard(std::function<void()> &func, std::function<void( char )> cb)
     gen_key_table(keys);
     C2D_Image layout = C2D_SpriteSheetGetImage(spriteSheet, 4);
     C2D_Image keypress = C2D_SpriteSheetGetImage(spriteSheet, 5);
-
     func = std::bind(keyboard::print, layout, keypress, &lock, keys, &do_capslock, &selected_key);
     callback = cb;
-    thread = threadCreate((ThreadFunc)&keyboard::hid_input_thread, this, 0x1000, 0x29, 1, true); 
+    thread = threadCreate((ThreadFunc)&keyboard::hid_input_thread, this, 0x1000, 0x29, 1, true);
 }
 
 keyboard::~keyboard()

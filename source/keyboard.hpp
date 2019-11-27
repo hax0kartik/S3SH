@@ -23,11 +23,21 @@ constexpr int NUM_KEYS = 56;
 class keyboard
 {
     public:
-        keyboard(std::function<void()> &func, std::function<void(char)> cb);
+        keyboard(std::function<void()> &func, std::function<void(char)> cb, bool de);
         ~keyboard();
         std::string get_input();
-        bool has_data() { return done; };
+        std::string get_input_async();
+        bool has_data() { return !input.empty(); };
+        void disable_local_echo() { echo = false; };
+        bool has_enter_been_pressed()
+        { 
+            bool value = was_enter_clicked; 
+            was_enter_clicked = !was_enter_clicked; 
+            return value; 
+        };
+
     private:
+    // Normal Keyboard
         Thread thread;
         LightLock lock;
         std::array<key_s, NUM_KEYS> keys;
@@ -36,6 +46,8 @@ class keyboard
         bool do_capslock;
         bool do_special;
         bool done;
+        bool echo = true;
+        bool was_enter_clicked;
         int selected_key = -1, old_key;
         
         static void print(C2D_Image layout, C2D_Image keypress, LightLock *lock, std::array<key_s, NUM_KEYS> keys, bool *capslock, int *selected);

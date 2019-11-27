@@ -22,6 +22,7 @@ void uiThread(void *arg)
     printf("GUI thread created");
     while(aptMainLoop())
     {
+      //  svcWaitSynchronization(ui.event, U64_MAX);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		
         if(ui.debug == false)

@@ -188,6 +188,7 @@ HANDLER(ed)
 HANDLER(ich)
     size_t n = P1(0); /* XXX use MAX */
     if (n > s->ncol - c->c - 1) n = s->ncol - c->c - 1;
+    else if(n == 0) return;
 
     memmove(l->chars + c->c + n, l->chars + c->c,
             MIN(s->ncol - 1 - c->c,
@@ -202,7 +203,7 @@ HANDLER(dch)
     memmove(l->chars + c->c, l->chars + c->c + n,
             (s->ncol - c->c - n) * sizeof(TMTCHAR));
 
-    clearline(vt, l, s->ncol - c->c - n, s->ncol);
+    clearline(vt, l, s->ncol - n, s->ncol);
 }
 
 HANDLER(el)
@@ -217,13 +218,13 @@ HANDLER(sgr)
     #define FGBG(c) *(P0(i) < 40? &vt->attrs.fg : &vt->attrs.bg) = c
     for (size_t i = 0; i < vt->npar; i++) switch (P0(i)){
         case  0: vt->attrs                    = defattrs;   break;
-        case  1: case 22: vt->attrs.bold      = P0(0) < 20; break;
-        case  2: case 23: vt->attrs.dim       = P0(0) < 20; break;
-        case  4: case 24: vt->attrs.underline = P0(0) < 20; break;
-        case  5: case 25: vt->attrs.blink     = P0(0) < 20; break;
-        case  7: case 27: vt->attrs.reverse   = P0(0) < 20; break;
-        case  8: case 28: vt->attrs.invisible = P0(0) < 20; break;
-        case 10: case 11: vt->acs             = P0(0) > 10; break;
+        case  1: case 22: vt->attrs.bold      = P0(i) < 20; break;
+        case  2: case 23: vt->attrs.dim       = P0(i) < 20; break;
+        case  4: case 24: vt->attrs.underline = P0(i) < 20; break;
+        case  5: case 25: vt->attrs.blink     = P0(i) < 20; break;
+        case  7: case 27: vt->attrs.reverse   = P0(i) < 20; break;
+        case  8: case 28: vt->attrs.invisible = P0(i) < 20; break;
+        case 10: case 11: vt->acs             = P0(i) > 10; break;
         case 30: case 40: FGBG(TMT_COLOR_BLACK);            break;
         case 31: case 41: FGBG(TMT_COLOR_RED);              break;
         case 32: case 42: FGBG(TMT_COLOR_GREEN);            break;
@@ -250,7 +251,7 @@ HANDLER(rep)
 
 HANDLER(dsr)
     char r[BUF_MAX + 1] = {0};
-    snprintf(r, BUF_MAX, "\033[%zd;%zdR", c->r, c->c);
+    snprintf(r, BUF_MAX, "\033[%zd;%zdR", c->r + 1, c->c + 1);
     CB(vt, TMT_MSG_ANSWER, (const char *)r);
 }
 
