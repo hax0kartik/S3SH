@@ -144,7 +144,7 @@ void keyboard::hid_input_thread(void *data)
         hidScanInput();
         if(osGetTime() - tm > 100)
             keyb->selected_key = -1;
-        if(keysHeld() & KEY_TOUCH)
+        if(keysDown() & KEY_TOUCH)
         {
             LightLock_Lock(&keyb->lock);
             hidTouchRead(&pos);
@@ -155,8 +155,6 @@ void keyboard::hid_input_thread(void *data)
                 float x2 = x1 + keyb->keys[i].width;
                 float y2 = y1 + keyb->keys[i].height;
                 
-                if((osGetTime() - tm < 120 && (keyb->old_key == i || keyb->old_key + 1 == i || keyb->old_key - 1 == i)) || keyb->done == true)
-                    continue;
                 if(pos.px >= x1 && pos.px <= x2 && pos.py >= y1 && pos.py <= y2)
                 {
                     keyb->old_key = i;
@@ -173,7 +171,37 @@ void keyboard::hid_input_thread(void *data)
 
 std::string keyboard::get_input()
 {
-    while(!done) {;}
+    input.clear();
+    touchPosition pos;
+    auto tm = osGetTime();
+
+    while(!done)
+    {
+        hidScanInput();
+        if(osGetTime() - tm > 100)
+            selected_key = -1;
+        if(keysDown() & KEY_TOUCH)
+        {
+            hidTouchRead(&pos);
+            for(int i = 0; i < NUM_KEYS; i++)
+            {
+                float x1 = keys[i].x + 2.0f;
+                float y1 = keys[i].y + 67.0f;
+                float x2 = x1 + keys[i].width;
+                float y2 = y1 + keys[i].height;
+                
+                if(pos.px >= x1 && pos.px <= x2 && pos.py >= y1 && pos.py <= y2)
+                {
+                    old_key = i;
+                    selected_key = i;
+                    if(append_to_input(this, i) == 1)
+                        done = true;
+                }
+            }
+            tm = osGetTime();
+        }
+    }
+    selected_key = -1;
     done = false;
     return std::move(input);
 }
@@ -184,7 +212,13 @@ std::string keyboard::get_input_async()
     return std::move(input);
 }
 
-keyboard::keyboard(std::function<void()> &func, std::function<void( char )> cb, bool de)
+void keyboard::async()
+{
+    thread = threadCreate((ThreadFunc)&keyboard::hid_input_thread, this, 0x1000, 0x29, 1, true);
+    svcSleepThread(1e+9);
+}
+
+keyboard::keyboard(std::function<void()> &func, std::function <void(char)> cb)
 {
     LightLock_Init(&lock);
     C2D_SpriteSheet spriteSheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
@@ -194,7 +228,6 @@ keyboard::keyboard(std::function<void()> &func, std::function<void( char )> cb, 
     C2D_Image keypress = C2D_SpriteSheetGetImage(spriteSheet, 5);
     func = std::bind(keyboard::print, layout, keypress, &lock, keys, &do_capslock, &selected_key);
     callback = cb;
-    thread = threadCreate((ThreadFunc)&keyboard::hid_input_thread, this, 0x1000, 0x29, 1, true);
 }
 
 keyboard::~keyboard()

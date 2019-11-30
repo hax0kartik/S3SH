@@ -32,7 +32,7 @@ int ssh::init()
 int ssh::mainLoop()
 {
 	auto input_cb = std::bind(utils.put_char, utils.lock, utils.vt, std::placeholders::_1);
-	keyboard kbd (ui.bot_func, input_cb, false);
+	keyboard kbd = keyboard(ui.bot_func, input_cb);
 
 	utils.print("Enter Host Name/Addr:");
 	hostname = kbd.get_input();
@@ -47,7 +47,7 @@ int ssh::mainLoop()
 	port = kbd.get_input();
 	if(port == "")	port = "22";
 	utils.print("\nPort: " + port + "\n");
-	
+
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_ADDRCONFIG;
@@ -85,11 +85,14 @@ int ssh::mainLoop()
 		//return (EXIT_FAILURE);
 	}
 
+	libssh2_session_set_timeout(session, 10000);
 	utils.print("Session inited\n");
 
 	rc = libssh2_session_handshake(session, sock);
 	if (rc) {
-		utils.print("SSH handshake failed");
+		errno = libssh2_session_last_errno(session);
+		utils.print("SSH handshake failed ");
+		utils.print(std::to_string(errno));
 		return -1;
 		//return (EXIT_FAILURE);
 	}
@@ -134,8 +137,7 @@ int ssh::mainLoop()
 	{
 		utils.print("Enter Passphare for the private key(Leave blank if none):");
 		password = kbd.get_input();
-		utils.print("\nPassphrase: " + password + "\n");
-
+		
 		if (libssh2_userauth_publickey_fromfile(session, username.c_str(), "/3ds/ssh/hostkey.pub", "/3ds/ssh/hostkey", password.c_str())) 
 		{
 			utils.print("Authentication by public key failed!\n");
@@ -180,7 +182,10 @@ int ssh::mainLoop()
 	struct timeval tv;
 
 	utils.print("Executed till main loop\n");
+	
 	kbd.disable_local_echo();
+	kbd.async();
+
 	do 
 	{	
 		FD_ZERO(&rfds);
