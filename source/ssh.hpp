@@ -33,6 +33,6 @@ class ssh
 	LIBSSH2_CHANNEL *channel;
 	
     std::string commandbuf;
-	char inputbuf[1920];
+	char inputbuf[0x1000];
 	util utils;
 };

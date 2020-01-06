@@ -46,6 +46,6 @@ std::array<std::string, 36> lr_specials = {
     "Slk", "Prt", "Pau", "5",
     "Win", "Ins", "Brk", "6",
     "SAp", "App", "nul", "7",
-    "STb", "nul", "nul", "8",
+    "STb", "nul", "Esc", "8",
     "SDe", "SBk", "0", "9"
 };

@@ -36,12 +36,13 @@ int keyboard::append_to_input(keyboard *keyb, int index)
     }
     else if(character == "Tb")
     {
-        keyb->callback('\t');
+        //keyb->callback('\t');
+        char ch = '\t';
+        keyb->input.append(1, '\x09');
     }
 
     else if(character == "Entr")
-    {   
-        
+    {       
         if(!keyb->echo)
             keyb->input.append("\n");
         return 1;
@@ -52,15 +53,19 @@ int keyboard::append_to_input(keyboard *keyb, int index)
         keyb->callback(' ');
         keyb->input.append(" ");
     }
+
+    else if(character == "Esc")
+    {
+        //keyb->callback(0x1B); // Escape 
+        keyb->input.append(1, '\x1b');
+    }
     else if(character == "Cps" || character == "Shft")
         keyb->do_capslock = !keyb->do_capslock;
     
     else
     {
-        
         if(keyb->echo)
-            keyb->callback(character[0]);
-        
+            keyb->callback(character[0]);     
         keyb->input.append(character);
     }
     return 0;  
@@ -128,7 +133,7 @@ void keyboard::gen_key_table(std::array<key_s, NUM_KEYS> &keys)
 
         {"@", "@",  1, 85, 94, 20},
         {"Space", "Space", 125, 85, 127, 20},
-        {"", "", 222, 85, 94, 20}
+        {"Esc", "Esc", 222, 85, 94, 20}
     }};
 }
 
@@ -155,6 +160,8 @@ void keyboard::hid_input_thread(void *data)
                 float x2 = x1 + keyb->keys[i].width;
                 float y2 = y1 + keyb->keys[i].height;
                 
+                if((osGetTime() - tm < 400 && (keyb->old_key == i || keyb->old_key + 1 == i || keyb->old_key - 1 == i)))
+                    continue;
                 if(pos.px >= x1 && pos.px <= x2 && pos.py >= y1 && pos.py <= y2)
                 {
                     keyb->old_key = i;
